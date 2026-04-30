@@ -11,7 +11,7 @@ services:
     environment:
       - PROBABILITY_ENGINE_URL=http://probability_engine:8001
       - REDIS_URL=redis://redis:6379/1
-      - DJANGO_SETTINGS_MODULE=sinistrinha.settings.prod
+      - DJANGO_SETTINGS_MODULE=sinistrinha.settings.dev
     depends_on:
       redis:
         condition: service_healthy
@@ -58,7 +58,7 @@ services:
     environment:
       - PROBABILITY_ENGINE_URL=http://probability_engine:8001
       - REDIS_URL=redis://redis:6379/1
-      - DJANGO_SETTINGS_MODULE=sinistrinha.settings.prod
+      - DJANGO_SETTINGS_MODULE=sinistrinha.settings.dev
     depends_on:
       redis:
         condition: service_healthy
@@ -74,10 +74,17 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/1
-      - DJANGO_SETTINGS_MODULE=sinistrinha.settings.prod
+      - DJANGO_SETTINGS_MODULE=sinistrinha.settings.dev
     depends_on:
       redis:
         condition: service_healthy
+
+  frontend-build:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    command: sh -c "npm ci && npm run build"
 
   nginx:
     image: nginx:alpine
@@ -90,6 +97,8 @@ services:
     depends_on:
       web:
         condition: service_healthy
+      frontend-build:
+        condition: service_completed_successfully
 
 volumes:
   redis_data:

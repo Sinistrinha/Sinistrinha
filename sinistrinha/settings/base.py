@@ -76,7 +76,7 @@ WSGI_APPLICATION = 'sinistrinha.wsgi.application'
 ASGI_APPLICATION = 'sinistrinha.asgi.application'
 
 DATABASES = {
-    'default': env.db('SUPABASE_DB_URL', default='sqlite:///db.sqlite3')
+    'default': env.db('DATABASE_URL', default='sqlite:///db.sqlite3')
 }
 
 PASSWORD_HASHERS = [
@@ -194,9 +194,9 @@ CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[
 # --------------------------------------------------------------------------- #
 
 # Supabase integration
-SUPABASE_URL = env('SUPABASE_URL', default='')
-SUPABASE_KEY = env('SUPABASE_KEY', default='')
-SUPABASE_SERVICE_ROLE_KEY = env('SUPABASE_SERVICE_ROLE_KEY', default='')
+#SUPABASE_URL = env('SUPABASE_URL', default='')
+#SUPABASE_KEY = env('SUPABASE_KEY', default='')
+#SUPABASE_SERVICE_ROLE_KEY = env('SUPABASE_SERVICE_ROLE_KEY', default='')
 
 # Probability engine URL (FastAPI microservice)
 PROBABILITY_ENGINE_URL = env(

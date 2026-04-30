@@ -20,7 +20,7 @@ NC='\033[0m'
 # --- 1. Check prerequisites ---
 echo -e "\n${YELLOW}[1/7] Checking prerequisites...${NC}"
 command -v docker >/dev/null 2>&1 || { echo "Docker is required. Install it first."; exit 1; }
-command -v docker-compose >/dev/null 2>&1 || command -v docker compose >/dev/null 2>&1 || { echo "Docker Compose is required."; exit 1; }
+command -v docker compose >/dev/null 2>&1 || command -v docker compose >/dev/null 2>&1 || { echo "Docker Compose is required."; exit 1; }
 
 # --- 2. Create .env if not exists ---
 echo -e "\n${YELLOW}[2/7] Checking .env file...${NC}"
@@ -31,13 +31,19 @@ fi
 
 # --- 3. Build containers ---
 echo -e "\n${YELLOW}[3/7] Building containers...${NC}"
-docker-compose build
+docker compose build
 
 # --- 4. Start services ---
 echo -e "\n${YELLOW}[4/7] Starting services...${NC}"
-docker-compose up -d redis probability_engine
+docker compose up -d redis probability_engine
 sleep 3
-docker-compose up -d web celery celery-beat nginx
+docker compose up -d web celery celery-beat
+
+# Build frontend before starting nginx
+echo "Building frontend (npm ci && npm run build)..."
+docker compose run --rm frontend-build
+
+docker compose up -d nginx
 
 # Wait for web to be ready
 echo "Waiting for Django to start..."
@@ -45,14 +51,15 @@ sleep 5
 
 # --- 5. Run migrations ---
 echo -e "\n${YELLOW}[5/7] Running migrations...${NC}"
-docker-compose exec -T web python manage.py migrate --noinput
-docker-compose exec -T web python manage.py collectstatic --noinput
+docker compose exec -T web python manage.py makemigrations users game payments --noinput
+docker compose exec -T web python manage.py migrate --noinput
+docker compose exec -T web python manage.py collectstatic --noinput
 
 # --- 6. Seed data ---
 echo -e "\n${YELLOW}[6/7] Seeding data...${NC}"
 
 # Create superuser
-docker-compose exec -T web python manage.py shell -c "
+docker compose exec -T web python manage.py shell -c "
 from django.contrib.auth.models import User
 from apps.users.models import UserProfile
 if not User.objects.filter(username='admin').exists():
@@ -64,7 +71,7 @@ else:
 "
 
 # Create test user
-docker-compose exec -T web python manage.py shell -c "
+docker compose exec -T web python manage.py shell -c "
 from django.contrib.auth.models import User
 from apps.users.models import UserProfile
 if not User.objects.filter(username='player1').exists():
@@ -76,7 +83,7 @@ else:
 "
 
 # Initialize Jackpot Pool
-docker-compose exec -T web python manage.py shell -c "
+docker compose exec -T web python manage.py shell -c "
 from apps.game.models import JackpotPool
 pool, created = JackpotPool.objects.get_or_create(pk=1, defaults={'current_amount': 500, 'min_amount': 500})
 if created:
@@ -86,7 +93,7 @@ else:
 "
 
 # Seed Level Configs
-docker-compose exec -T web python manage.py shell -c "
+docker compose exec -T web python manage.py shell -c "
 from apps.game.models import LevelConfig
 from apps.game.level_system import LEVEL_CONFIG
 
