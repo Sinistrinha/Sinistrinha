@@ -12,6 +12,12 @@ interface ReelProps {
 }
 
 const TOTAL_EXTRA_SPINS = 20;
+// Strip layout: [3 old symbols] + [TOTAL_EXTRA_SPINS random] + [3 final symbols]
+// onst STRIP_LENGTH = 3 + TOTAL_EXTRA_SPINS + 3; // = 26
+// Starting y: scroll back so the 3 old symbols (bottom of strip) are visible.
+// translateY(%) in CSS is relative to the element's OWN height, not the container.
+// Correct offset = (number of symbols above the window) / total symbols * 100%.
+// const START_Y_PCT = ((TOTAL_EXTRA_SPINS + 3) / STRIP_LENGTH) * 100; // ≈ 88.46
 
 export default function Reel({ index, isSpinning, finalSymbols, isWinningReel, onAnimationComplete }: ReelProps) {
   const controls = useAnimation();
