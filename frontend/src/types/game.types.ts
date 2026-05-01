@@ -19,6 +19,7 @@ export interface BackendSpinResponse {
   combination_type: string;
   is_jackpot: boolean;
   multiplier: number;
+  match_count: number;        // 0‑5: how many consecutive reels matched from reel 0
   free_spins_awarded: number;
   xp_earned: number;
   new_balance: number;
@@ -38,6 +39,7 @@ export interface SpinResult {
   jackpot: boolean;
   combinationType: string;
   multiplier: number;
+  matchCount: number;         // how many reels from left participated in the win
   freeSpinsAwarded: number;
   winningSymbol: string | null;
 }
@@ -59,13 +61,19 @@ export interface GameState {
 
 /**
  * Convert the flat 5-symbol backend array into a 5x3 grid for UI display.
- * The backend symbols become the middle row; top and bottom are randomised.
+ * The backend symbols become the MIDDLE row (the only row that counts for wins).
+ * Top and bottom are the adjacent symbols on the virtual reel strip — this
+ * creates a natural "reel scroll" look WITHOUT generating false winning patterns
+ * on the decorative rows.
  */
 export function backendToReels(flatReels: string[]): string[][] {
+  const keys = SYMBOL_KEYS;
   return flatReels.map((middleSym) => {
-    const top = SYMBOL_KEYS[Math.floor(Math.random() * SYMBOL_KEYS.length)];
-    const bottom = SYMBOL_KEYS[Math.floor(Math.random() * SYMBOL_KEYS.length)];
-    return [top, middleSym, bottom];
+    const idx = keys.indexOf(middleSym);
+    // Use neighbouring positions on the strip so the visual is coherent
+    const topSym    = keys[((idx - 1) + keys.length) % keys.length];
+    const bottomSym = keys[(idx + 1) % keys.length];
+    return [topSym, middleSym, bottomSym];
   });
 }
 
@@ -93,17 +101,21 @@ export const LEVEL_PRIZES: LevelPrize[] = [
 // ========== Symbols Definition ==========
 
 export const SYMBOLS: Record<string, SlotSymbol> = {
-  pendrive:       { id: 'pendrive',       name: 'Pendrive',       icon: '🔌', color: '#9CA3AF', rarity: 'comum',    multiplier: 1 },
-  mouse:          { id: 'mouse',          name: 'Mouse',          icon: '🖱️', color: '#C0C0C0', rarity: 'comum',    multiplier: 1.5 },
-  teclado:        { id: 'teclado',        name: 'Teclado',        icon: '⌨️', color: '#C0C0C0', rarity: 'comum',    multiplier: 2 },
-  ram:            { id: 'ram',            name: 'RAM DDR5',       icon: '💾', color: '#00FF88', rarity: 'incomum',  multiplier: 3 },
-  ssd:            { id: 'ssd',            name: 'SSD NVMe',       icon: '💿', color: '#00AAFF', rarity: 'incomum',  multiplier: 4 },
-  monitor:        { id: 'monitor',        name: 'Monitor 4K',     icon: '🖥️', color: '#0088FF', rarity: 'raro',     multiplier: 6 },
-  cpu:            { id: 'cpu',            name: 'Processador i9', icon: '🔲', color: '#FF8800', rarity: 'raro',     multiplier: 8 },
-  gpu_rtx:        { id: 'gpu_rtx',        name: 'RTX 4090',       icon: '🎮', color: '#76B900', rarity: 'epico',    multiplier: 15 },
-  gorila_dourado: { id: 'gorila_dourado', name: 'Gorila Dourado', icon: '🦍', color: '#FFD700', rarity: 'lendario', multiplier: 50 },
-  wild:           { id: 'wild',           name: 'Wild',           icon: '⚡', color: '#FFD700', rarity: 'especial', multiplier: 0 },
-  scatter:        { id: 'scatter',        name: 'Scatter',        icon: '🍌', color: '#FFD700', rarity: 'especial', multiplier: 0 },
+  pendrive:           { id: 'pendrive',           name: 'Pendrive',       icon: '🔌', color: '#9CA3AF', rarity: 'comum',    multiplier: 1 },
+  mouse:              { id: 'mouse',              name: 'Mouse',          icon: '🖱️', color: '#C0C0C0', rarity: 'comum',    multiplier: 1.5 },
+  teclado:            { id: 'teclado',            name: 'Teclado',        icon: '⌨️', color: '#C0C0C0', rarity: 'comum',    multiplier: 2 },
+  ram:                { id: 'ram',                name: 'RAM DDR5',       icon: '💾', color: '#00FF88', rarity: 'incomum',  multiplier: 3 },
+  ssd:                { id: 'ssd',                name: 'SSD NVMe',       icon: '💿', color: '#00AAFF', rarity: 'incomum',  multiplier: 4 },
+  monitor:            { id: 'monitor',            name: 'Monitor 4K',     icon: '🖥️', color: '#0088FF', rarity: 'raro',     multiplier: 6 },
+  cpu:                { id: 'cpu',                name: 'Processador i9', icon: '🔲', color: '#FF8800', rarity: 'raro',     multiplier: 8 },
+  gpu_rtx:            { id: 'gpu_rtx',            name: 'RTX 4090',       icon: '🎮', color: '#76B900', rarity: 'epico',    multiplier: 15 },
+  gorila_dourado:     { id: 'gorila_dourado',     name: 'Gorila Dourado', icon: '🦍', color: '#FFD700', rarity: 'lendario', multiplier: 50 },
+  // Backend uses these exact IDs — must match probability_engine/config.py
+  wild_sinistrinha:   { id: 'wild_sinistrinha',   name: 'Wild',           icon: '🃏', color: '#FFD700', rarity: 'especial', multiplier: 0 },
+  scatter_banana:     { id: 'scatter_banana',     name: 'Scatter',        icon: '🍌', color: '#FFD700', rarity: 'especial', multiplier: 0 },
+  // Legacy aliases kept so any old stored data still renders
+  wild:               { id: 'wild',               name: 'Wild',           icon: '🃏', color: '#FFD700', rarity: 'especial', multiplier: 0 },
+  scatter:            { id: 'scatter',            name: 'Scatter',        icon: '🍌', color: '#FFD700', rarity: 'especial', multiplier: 0 },
 };
 
 export const SYMBOL_KEYS = Object.keys(SYMBOLS);

@@ -32,12 +32,12 @@ class Symbol:
 
 SYMBOLS: Dict[str, Symbol] = {
     # Alta frequência (comuns, baixo pagamento)
-    "pendrive":         Symbol("pendrive",         weight=35, payout_multiplier=1.5,   icon="🔌"),
-    "mouse":            Symbol("mouse",            weight=30, payout_multiplier=2.0,   icon="🖱️"),
-    "teclado":          Symbol("teclado",          weight=28, payout_multiplier=2.5,   icon="⌨️"),
+    "pendrive":         Symbol("pendrive",         weight=80, payout_multiplier=1.5,   icon="🔌"),
+    "mouse":            Symbol("mouse",            weight=70, payout_multiplier=2.0,   icon="🖱️"),
+    "teclado":          Symbol("teclado",          weight=55, payout_multiplier=2.5,   icon="⌨️"),
 
     # Média frequência
-    "ram":              Symbol("ram",              weight=18, payout_multiplier=5.0,   icon="💾"),
+    "ram":              Symbol("ram",              weight=20, payout_multiplier=5.0,   icon="💾"),
     "ssd":              Symbol("ssd",              weight=15, payout_multiplier=8.0,   icon="💿"),
     "monitor":          Symbol("monitor",          weight=12, payout_multiplier=12.0,  icon="🖥️"),
 
@@ -49,8 +49,8 @@ SYMBOLS: Dict[str, Symbol] = {
     "gorila_dourado":   Symbol("gorila_dourado",   weight=2,  payout_multiplier=150.0, icon="🦍"),
 
     # Wild e especiais
-    "wild_sinistrinha": Symbol("wild_sinistrinha", weight=3,  payout_multiplier=0,     icon="🃏", is_wild=True),
-    "scatter_banana":   Symbol("scatter_banana",   weight=4,  payout_multiplier=0,     icon="🍌", is_scatter=True),
+    "wild_sinistrinha": Symbol("wild_sinistrinha", weight=5,  payout_multiplier=0,     icon="🃏", is_wild=True),
+    "scatter_banana":   Symbol("scatter_banana",   weight=6,  payout_multiplier=0,     icon="🍌", is_scatter=True),
 }
 
 # Convenience list of symbol names (order matters for deterministic iteration)
@@ -98,13 +98,16 @@ SESSION_LOSS_SOFT_LIMIT = 0.70   # 70 % of budget lost → slightly ease RTP
 SESSION_LOSS_HARD_LIMIT = 0.90   # 90 % → more aggressive easing to avoid churn
 
 # Payout ratios for partial matches (relative to 5‑of‑a‑kind multiplier)
+# 2-of-a-kind pays a small fraction; 3/4/5 scale up from there.
 MATCH_RATIOS = {
     5: 1.00,
-    4: 0.70,
-    3: 0.40,
+    4: 0.50,
+    3: 0.25,
+    2: 0.10,  # small return — common enough to keep engagement high
 }
 WILD_BONUS_MULTIPLIER = 1.20  # +20 % if a wild completes the combo
-GLOBAL_MULTIPLIER_BOOST = 12.0 # Adjusts single-line payouts to competitive RTP
+# Reduced from 12.0 because wins are now more frequent (2-of-a-kind tier added).
+GLOBAL_MULTIPLIER_BOOST = 4.0
 
 # Scatter rules
 SCATTER_FREE_SPINS = {

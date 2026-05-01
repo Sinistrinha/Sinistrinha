@@ -69,7 +69,7 @@ class PayoutCalculator:
         combination_type = "loss"
         is_jackpot = False
 
-        if match_count >= 3 and winning_symbol is not None:
+        if match_count >= 2 and winning_symbol is not None:
             sym = SYMBOLS[winning_symbol]
             base_mult = sym.payout_multiplier * MATCH_RATIOS[match_count]
             if wild_used:
@@ -104,7 +104,7 @@ class PayoutCalculator:
             "free_spins": free_spins,
             "xp_bonus": xp,
             "winning_symbol": winning_symbol,
-            "match_count": match_count,
+            "match_count": match_count,   # 0‑5; used by frontend to light up winning reels
             "wild_used": wild_used,
         }
 
@@ -165,7 +165,7 @@ class PayoutCalculator:
             # Wilds alone pay nothing; they only *complete* combos.
             return 0, None, True
 
-        if match_count < 3:
+        if match_count < 2:
             return match_count, None, wild_used
 
         return match_count, anchor, wild_used

@@ -26,6 +26,7 @@ from .services.notification_service import NotificationService
 
 from probability_engine.weight_engine import WeightEngine
 from probability_engine.payout_calculator import PayoutCalculator
+from probability_engine.house_edge import HouseEdgeController
 
 import logging
 
@@ -34,6 +35,7 @@ logger = logging.getLogger(__name__)
 # Singleton instances for the probability engine
 _weight_engine = WeightEngine()
 _payout_calculator = PayoutCalculator()
+_house_edge = HouseEdgeController()
 
 
 class SpinView(views.APIView):
@@ -76,11 +78,19 @@ class SpinView(views.APIView):
         user_profile.total_wagered += bet_amount
         user_profile.total_spins += 1
 
-        # 2. Get RTP modifier based on player level
-        modifier = LevelService.get_rtp_modifier(user_profile)
+        # 2. Get RTP modifier based on player level + dynamic house-edge controller
+        level_modifier = LevelService.get_rtp_modifier(user_profile)
+        hec_modifier, _ = _house_edge.get_spin_modifier(
+            user_id=str(request.user.id),
+            user_level=user_profile.level,
+        )
+        modifier = (level_modifier + hec_modifier) / 2.0
 
         # 3. Spin reels using weighted probability engine
         reels = _weight_engine.spin_all(modifier=modifier)
+
+        # Apply near-miss logic (may degrade 4/5-of-a-kind to keep house edge)
+        _near_miss, reels = _house_edge.should_force_near_miss(reels)
 
         # 4. Calculate payout
         result = _payout_calculator.calculate(reels, float(bet_amount))
@@ -90,8 +100,10 @@ class SpinView(views.APIView):
         is_jackpot = result["is_jackpot"]
         free_spins_awarded = result["free_spins"]
         xp_earned = result["xp_bonus"]
+        match_count = result["match_count"]
 
-        # 5. Apply payout
+        # 5. Apply payout + update house-edge session stats
+        _house_edge.update_session_stats(str(request.user.id), float(bet_amount), float(payout))
         if payout > 0:
             user_profile.balance += payout
             user_profile.total_won += payout
@@ -155,6 +167,7 @@ class SpinView(views.APIView):
             "combination_type": combination_type,
             "is_jackpot": is_jackpot,
             "multiplier": result["multiplier"],
+            "match_count": match_count,
             "free_spins_awarded": free_spins_awarded,
             "xp_earned": xp_earned,
             "new_balance": float(user_profile.balance),

@@ -6,67 +6,66 @@ import { SYMBOL_KEYS } from '../../types/game.types';
 interface ReelProps {
   index: number;
   isSpinning: boolean;
-  finalSymbols: string[];
-  winningIndices: number[]; // e.g. [1] if center row won
+  finalSymbols: string[];   // [top, middle, bottom] — middle is the result row
+  isWinningReel: boolean;   // true when this reel participates in the winning combo
+  onAnimationComplete?: () => void;
 }
 
-const TOTAL_EXTRA_SPINS = 20; // How many symbols to spin through before stopping
+const TOTAL_EXTRA_SPINS = 20;
 
-export default function Reel({ index, isSpinning, finalSymbols, winningIndices }: ReelProps) {
+export default function Reel({ index, isSpinning, finalSymbols, isWinningReel, onAnimationComplete }: ReelProps) {
   const controls = useAnimation();
   const [strip, setStrip] = useState<string[]>(finalSymbols);
 
-  // Initialize strip or build the "spinning" strip
   useEffect(() => {
     if (isSpinning) {
-      // Create a long strip of random symbols + the target final 3 at the top
-      const randomFiller = Array.from({ length: TOTAL_EXTRA_SPINS }, () => 
+      const randomFiller = Array.from({ length: TOTAL_EXTRA_SPINS }, () =>
         SYMBOL_KEYS[Math.floor(Math.random() * SYMBOL_KEYS.length)]
       );
-      
-      // The Framer Motion animation pulls the strip DOWNWARDS.
-      // So the layout from bottom to top needs to be [Current View] -> [Random] -> [Final View]
-      // To loop seamlessly, we'll construct the array accordingly.
-      
-      setStrip(prevStrip => [...finalSymbols, ...randomFiller, ...prevStrip.slice(0, 3)]);
 
-      // Start the spin animation with staggered delay based on reel index
-      controls.set({ y: `-${(TOTAL_EXTRA_SPINS + 3) * 33.33}%` }); // Start near the bottom of strip
-      
+      setStrip(prevStrip => [...prevStrip.slice(0, 3), ...randomFiller, ...finalSymbols]);
+
+      controls.set({ y: `-${(TOTAL_EXTRA_SPINS + 3) * 33.33}%` });
       controls.start({
-        y: '0%', // End showing the top 3 elements (finalSymbols)
+        y: '0%',
         transition: {
-          duration: 2.0 + (index * 0.2), // Staggered stop (left to right)
-          ease: [0.17, 0.67, 0.83, 0.67], // smooth deceleration
-          delay: index * 0.1, // Staggered start
+          duration: 2.0 + (index * 0.2),
+          ease: [0.17, 0.67, 0.83, 0.67],
+          delay: index * 0.1,
         }
-      });
+      }).then(() => onAnimationComplete?.());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSpinning, finalSymbols, index, controls]);
 
   return (
-    <div className="relative w-full h-full overflow-hidden border-r border-[#ffffff10] last:border-r-0 bg-[#0a0a0f]">
-      {/* Inner shadow overlay for depth */}
-      <div className="absolute inset-0 inner-glow z-20 pointer-events-none rounded-sm"></div>
+    <div className={`relative w-full h-full overflow-hidden border-r border-[#ffffff10] last:border-r-0 bg-[#0a0a0f] transition-all duration-500 ${
+      isWinningReel ? 'bg-[#1a1500]' : ''
+    }`}>
+      {/* Winning reel side glow */}
+      {isWinningReel && (
+        <div className="absolute inset-0 shadow-[inset_0_0_20px_rgba(255,215,0,0.25)] pointer-events-none z-20 rounded-sm" />
+      )}
+
+      <div className="absolute inset-0 inner-glow z-20 pointer-events-none rounded-sm" />
 
       <motion.div
-        className="absolute top-0 left-0 w-full flex flex-col-reverse" 
+        className="absolute top-0 left-0 w-full flex flex-col-reverse"
         style={{ height: `${(strip.length / 3) * 100}%` }}
         animate={controls}
       >
         {strip.map((symbolKey, idx) => {
-          // Determine if this symbol is part of a win.
-          // Since final symbols are at idx 0, 1, 2 of the top of the flex-col-reverse list
-          const isWinning = !isSpinning && idx < 3 && winningIndices.includes(idx);
-          
+          // idx 1 = middle row (the actual result). Only highlight if this reel won.
+          // With flex-col-reverse, the visual middle row is at strip.length - 2 (second-to-last item)
+          const isWinningSymbol = !isSpinning && idx === strip.length - 2 && isWinningReel;
+
           return (
-            <div 
-              key={`${index}-${idx}-${symbolKey}`} 
+            <div
+              key={`${index}-${idx}-${symbolKey}`}
               className="w-full flex-grow flex items-center justify-center p-1 md:p-2"
-              style={{ height: `${100 / strip.length}%` }} 
+              style={{ height: `${100 / strip.length}%` }}
             >
-              <Symbol symbolKey={symbolKey} isWinning={isWinning} />
+              <Symbol symbolKey={symbolKey} isWinning={isWinningSymbol} />
             </div>
           );
         })}

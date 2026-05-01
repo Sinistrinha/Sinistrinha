@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import SlotMachine from '../components/game/SlotMachine';
 import BetControls from '../components/game/BetControls';
 import LevelProgress from '../components/game/LevelProgress';
+import WinAnimation from '../components/game/WinAnimation';
 import { useGameStore } from '../store/gameStore';
 import { useCasinoStore } from '../store/casinoStore';
 
@@ -70,6 +71,7 @@ export default function GamePage() {
 
         </div>
       </div>
+      <WinAnimation />
     </div>
   );
 }

@@ -83,24 +83,25 @@ class LevelService:
         latest_prize = ""
 
         while True:
-            next_level = profile.level + 1
-            try:
-                config = LevelConfig.objects.get(level=next_level)
-            except LevelConfig.DoesNotExist:
-                # Max level reached — no more level-ups possible
+            # Use the next available level config above current level (handles non-consecutive levels)
+            config = LevelConfig.objects.filter(
+                level__gt=profile.level
+            ).order_by('level').first()
+
+            if not config:
                 break
 
             if profile.xp < config.xp_required:
                 break
 
             # Level up!
-            profile.level = next_level
+            profile.level = config.level
             cumulative_bonus_coins += float(config.bonus_coins)
             cumulative_free_spins += config.free_spins
             latest_prize = config.prize_name
 
             logger.info(
-                f"Player {profile.user_id} leveled up to {next_level} "
+                f"Player {profile.user_id} leveled up to {profile.level} "
                 f"(bonus: {config.bonus_coins} coins, {config.free_spins} free spins)"
             )
 

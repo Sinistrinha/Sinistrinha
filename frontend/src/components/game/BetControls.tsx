@@ -1,17 +1,50 @@
 import { useGameStore } from '../../store/gameStore';
-import { Coins, Minus, Plus, Maximize, CheckCircle2 } from 'lucide-react';
+import { Coins, Minus, Plus, Maximize, CheckCircle2, TrendingUp } from 'lucide-react';
 
 export default function BetControls() {
-  const { 
-    bet, minBet, maxBet, balance, isSpinning, 
-    increaseBet, decreaseBet, maxBetAction, spin, 
-    showWinAnimation, lastResult, collect 
+  const {
+    bet, minBet, maxBet, balance, isSpinning,
+    increaseBet, decreaseBet, maxBetAction, spin,
+    showWinAnimation, lastResult, collect
   } = useGameStore();
+
+  /** Format the combination_type from the backend for display, e.g. "3x mouse" → "3× Mouse" */
+  const formatCombo = (combo: string): string => {
+    if (!combo || combo === 'loss') return '';
+    return combo
+      .replace(/(\d+)x\s*/, (_, n) => `${n}× `)
+      .replace(/gorila_dourado/g, 'Gorila Dourado')
+      .replace(/gpu_rtx/g, 'RTX 4090')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  };
+
+  const combo = lastResult?.combinationType ?? '';
+  const isLoss = !combo || combo === 'loss';
+  const formattedCombo = formatCombo(combo);
 
   const canSpin = !isSpinning && balance >= bet;
 
   return (
-    <div className="w-full max-w-5xl bg-brand-gray border border-white/10 rounded-2xl p-4 md:p-6 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+    <div className="w-full max-w-5xl flex flex-col items-center gap-2 relative z-10">
+
+      {/* Resultado do último spin */}
+      {!isSpinning && lastResult && (
+        <div className={`w-full max-w-5xl flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-sm font-bold tracking-wide transition-all ${
+          isLoss
+            ? 'text-gray-500'
+            : 'text-brand-gold bg-brand-gold/10 border border-brand-gold/20'
+        }`}>
+          {!isLoss && <TrendingUp className="w-4 h-4 shrink-0" />}
+          <span>
+            {isLoss
+              ? 'Sem combinação — tente novamente!'
+              : `${formattedCombo}  ·  ${lastResult.multiplier.toFixed(2)}×`}
+          </span>
+        </div>
+      )}
+
+    <div className="w-full max-w-5xl bg-brand-gray border border-white/10 rounded-2xl p-4 md:p-6 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
       
       {/* Balance Block */}
       <div className="flex flex-col items-center md:items-start p-3 bg-black/40 rounded-xl border border-white/5 w-full md:w-48 shrink-0">
@@ -101,6 +134,7 @@ export default function BetControls() {
         )}
       </div>
 
+    </div>
     </div>
   );
 }

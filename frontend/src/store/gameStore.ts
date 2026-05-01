@@ -25,6 +25,8 @@ interface GameStoreState {
   xpToNextLevel: number;
   freeSpins: number;
   isSpinning: boolean;
+  reelsDone: boolean;
+  pendingWin: boolean;
   reels: string[][];
   lastResult: SpinResult | null;
   jackpotValue: number;
@@ -37,6 +39,7 @@ interface GameStoreState {
   decreaseBet: () => void;
   maxBetAction: () => void;
   spin: () => void;
+  onReelsComplete: () => void;
   dismissWinAnimation: () => void;
   dismissLevelUp: () => void;
   fetchJackpot: () => void;
@@ -54,6 +57,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   xpToNextLevel: 100,
   freeSpins: 0,
   isSpinning: false,
+  reelsDone: true,
+  pendingWin: false,
   reels: generateRandomReels(),
   lastResult: null,
   jackpotValue: 0,
@@ -81,7 +86,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const { balance, bet, isSpinning } = get();
     if (isSpinning || balance < bet) return;
 
-    set({ isSpinning: true, lastResult: null, showWinAnimation: false, error: null });
+    set({ isSpinning: true, reelsDone: false, pendingWin: false, lastResult: null, showWinAnimation: false, error: null });
 
     try {
       const { data } = await api.post<BackendSpinResponse>('/game/spin/', {
@@ -99,21 +104,30 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         jackpot: data.is_jackpot,
         combinationType: data.combination_type,
         multiplier: data.multiplier,
+        matchCount: data.match_count ?? 0,
         freeSpinsAwarded: data.free_spins_awarded,
         winningSymbol: data.winning_symbol,
       };
 
       const oldLevel = get().level;
 
+      const hasPayout = data.payout > 0;
+      const reelsDone = get().reelsDone;
+
+      // Update reels WITHOUT clearing isSpinning — the Reel component's useEffect
+      // depends on both isSpinning and finalSymbols. If we clear isSpinning here
+      // (same render as the new reels), the effect fires with isSpinning=false and
+      // never rebuilds the strip with the correct symbols. Instead, isSpinning is
+      // cleared in onReelsComplete, which fires after the animation lands.
       set({
         reels: reelGrid,
-        isSpinning: false,
         lastResult: result,
         balance: data.new_balance,
         level: data.new_level,
         xp: data.new_xp,
         freeSpins: data.free_spins_remaining,
-        showWinAnimation: data.payout > 0,
+        pendingWin: hasPayout && !reelsDone,
+        showWinAnimation: hasPayout && reelsDone,
         showLevelUp: data.new_level > oldLevel,
       });
 
@@ -127,6 +141,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         || 'Spin failed';
       set({ isSpinning: false, error: msg });
     }
+  },
+
+  onReelsComplete: () => {
+    const { pendingWin } = get();
+    set({ reelsDone: true, isSpinning: false, ...(pendingWin ? { showWinAnimation: true, pendingWin: false } : {}) });
   },
 
   dismissWinAnimation: () => set({ showWinAnimation: false }),
